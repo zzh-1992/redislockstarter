@@ -1,4 +1,4 @@
-package com.grapefruit.redislockstarter.myRedisLock;
+package com.grapefruit.redislockstarter.redisLock;
 
 import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.annotation.Around;
@@ -17,6 +17,8 @@ import java.util.Timer;
 import java.util.TimerTask;
 
 /**
+ * 切面 锁
+ *
  * @author Grapefruit
  * @version 1.0
  * @date 2021/4/26
@@ -24,16 +26,16 @@ import java.util.TimerTask;
 @Component
 @Aspect
 public class RedisLockAspect {
+    private static final String LOCK = "lock";
     @Autowired
     private Jedis jedis;
-
-    private static final String LOCK = "lock";
 
     /**
      * 使用标记注解定义pointCut
      */
-    @Pointcut(value = "@annotation(com.grapefruit.redislockstarter.myRedisLock.RedisLock)")
-    public void redisLockPointCut(){}
+    @Pointcut(value = "@annotation(com.grapefruit.redislockstarter.redisLock.RedisLock)")
+    public void redisLockPointCut() {
+    }
 
     /**
      * 定义环绕方法
@@ -41,16 +43,16 @@ public class RedisLockAspect {
     @Around(value = "redisLockPointCut()")
     public Object handle(ProceedingJoinPoint joinPoint) throws Throwable {
         // 获取LOCK
-        
+
         // 获取ttl
         int ttl = getTTL(joinPoint);
         long begin = System.currentTimeMillis();
         Timer timer = new Timer();
         // 启动定时器
-        myTimer(jedis,LOCK,timer,ttl);
+        myTimer(jedis, LOCK, timer, ttl);
 
         Object proceed = null;
-        if(tryLock(ttl)){
+        if (tryLock(ttl)) {
             // 执行业务方法
             proceed = joinPoint.proceed();
         }
@@ -63,30 +65,31 @@ public class RedisLockAspect {
     }
 
     // 尝试获取锁
-    private boolean tryLock(int secondsToExpire){
+    private boolean tryLock(int secondsToExpire) {
         SetParams params = new SetParams();
         params.nx();
         params.ex(secondsToExpire);
-        String set = jedis.set(LOCK, "",params);
+        String set = jedis.set(LOCK, "", params);
         return "OK".equals(set);
     }
 
     // 获取ttl
-    public int getTTL(ProceedingJoinPoint joinPoint){
+    public int getTTL(ProceedingJoinPoint joinPoint) {
         String methodName = joinPoint.getSignature().getName();
         Class<?> targetClass = joinPoint.getTarget().getClass();
-        Optional<Method> optionalMethod = Arrays.stream(targetClass.getDeclaredMethods()).filter(o -> o.getName().equals(methodName)).findFirst();
+        Optional<Method> optionalMethod =
+                Arrays.stream(targetClass.getDeclaredMethods()).filter(o -> o.getName().equals(methodName)).findFirst();
         return optionalMethod.get().getAnnotation(RedisLock.class).ttl();
     }
 
     // 定时器
-    private void myTimer(Jedis jedis, String lock , Timer timer,int ttl){
+    private void myTimer(Jedis jedis, String lock, Timer timer, int ttl) {
         timer.schedule(new TimerTask() {
             @Override
             public void run() {
                 try {
-                    if(jedis.exists(lock)){
-                        jedis.expire(lock,ttl);
+                    if (jedis.exists(lock)) {
+                        jedis.expire(lock, ttl);
                         System.out.println("===redis续命====>" + LocalDateTime.now());
                     }
                 } catch (Exception e) {

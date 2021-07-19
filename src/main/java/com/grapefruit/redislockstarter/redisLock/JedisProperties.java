@@ -1,16 +1,18 @@
-package com.grapefruit.redislockstarter;
+package com.grapefruit.redislockstarter.redisLock;
 
 import lombok.Data;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.stereotype.Component;
 
 /**
+ * 属性配置
+ *
  * @author Grapefruit
  * @version 1.0
  * @date 2021/4/26
  */
 @Component
-@ConfigurationProperties(prefix="jedis")
+@ConfigurationProperties(prefix = "jedis")
 @Data
 public class JedisProperties {
 
